@@ -1,6 +1,6 @@
-const apiService = {
+export const apiService = {
   fetchDashboardData: async () => {
-    // Simulating network delay
+    // Simulating network delay for realistic frontend feel
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({

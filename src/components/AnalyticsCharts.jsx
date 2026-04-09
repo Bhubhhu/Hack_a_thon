@@ -11,7 +11,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
-// Register Chart.js components once at the top level of this file
+// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -23,13 +23,12 @@ ChartJS.register(
 );
 
 const AnalyticsCharts = ({ availableCompanies }) => {
-  // Setup Bar Chart Data
   const probData = {
     labels: availableCompanies.map(c => c.name),
     datasets: [{
       label: 'Selection Probability (%)',
       data: availableCompanies.map(c => c.matchScore),
-      backgroundColor: '#10b981', // emerald-500
+      backgroundColor: '#10b981',
       borderRadius: 4
     }]
   };
@@ -51,11 +50,10 @@ const AnalyticsCharts = ({ availableCompanies }) => {
     }
   };
 
-  // Setup Funnel (Doughnut) Chart Data
   const funnelData = {
     labels: ['Applied (Waiting)', 'Screening Passed', 'Interview Scheduled', 'Rejected'],
     datasets: [{
-      data: [5, 3, 2, 2], // Mock tracking data
+      data: [5, 3, 2, 2],
       backgroundColor: ['#e7e5e4', '#60a5fa', '#10b981', '#f43f5e'],
       borderWidth: 2,
       borderColor: '#ffffff'
@@ -94,3 +92,5 @@ const AnalyticsCharts = ({ availableCompanies }) => {
     </section>
   );
 };
+
+export default AnalyticsCharts;

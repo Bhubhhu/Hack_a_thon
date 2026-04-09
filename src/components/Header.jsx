@@ -1,3 +1,5 @@
+import React from 'react';
+
 const Header = ({ student }) => {
   const getReliabilityColor = (score) => {
     if (score > 90) return "text-emerald-600";
@@ -25,7 +27,6 @@ const Header = ({ student }) => {
             {student.reliabilityScore}%
           </div>
           <div className="text-xs text-emerald-600 uppercase tracking-wider mt-1">Reliability Score</div>
-          {/* Tooltip */}
           <div className="absolute hidden group-hover:block w-48 bg-stone-800 text-white text-xs rounded p-2 top-full right-0 mt-2 z-10 text-left">
             Based on past interview attendance and offer acceptance history. High score prioritizes you for top tier companies.
           </div>
@@ -34,3 +35,5 @@ const Header = ({ student }) => {
     </header>
   );
 };
+
+export default Header;

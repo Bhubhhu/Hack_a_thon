@@ -1,3 +1,5 @@
+import React from 'react';
+
 const AILogFeed = ({ data, studentName }) => {
   const myResult = data.final_shortlist.find(s => s.student_name === studentName);
 
@@ -43,3 +45,5 @@ const AILogFeed = ({ data, studentName }) => {
     </section>
   );
 };
+
+export default AILogFeed;

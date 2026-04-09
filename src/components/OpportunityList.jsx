@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 const OpportunityList = ({ companies }) => {
   const [activeTab, setActiveTab] = useState('available');
 
@@ -80,7 +82,7 @@ const OpportunityList = ({ companies }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50/50" style={{ scrollbarWidth: 'thin' }}>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50/50 custom-scroll">
         {companies[activeTab].length === 0 ? (
           <div className="text-center text-stone-500 py-8">No companies in this category.</div>
         ) : (
@@ -92,3 +94,5 @@ const OpportunityList = ({ companies }) => {
     </section>
   );
 };
+
+export default OpportunityList;
