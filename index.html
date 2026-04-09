@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlacementPro - Student Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Warm Neutrals & Earthy Tones. Background: Stone-50, Cards: White, Text: Stone-800, Accents: Emerald (Success/Available), Amber (Warnings), Rose (Unavailable). -->
+    
+    <!-- Application Structure Plan: 
+         A dashboard layout prioritized for immediate student awareness. 
+         1. Header: Quick profile and the critical "Reliability Score".
+         2. Main Grid: 
+            - Left Column (Action-oriented): Tabs for "Available" and "Unavailable" companies. This solves the "random applying" and "lack of direction" problem by clearly showing where they stand and WHY.
+            - Right Column (Analytical/Insight-oriented): 
+                a. "Employer AI Screenings": Consumes the provided API contract to show the student exactly how they were evaluated automatically, solving the "visibility" issue.
+                b. "Application Tracking" & "Selection Probability": Visual charts to track progress and gauge chances.
+    -->
+
+    <!-- Visualization & Content Choices: 
+         - Reliability Score: Prominent text/badge (Goal: Inform). 
+         - Available/Unavailable Companies: Interactive list with visual tags and clear reasoning (Goal: Organize/Inform). HTML/Tailwind.
+         - Employer AI Insights: Styled log/feed layout parsing the API JSON (Goal: Inform/Relationships). Shows backend integration.
+         - Selection Probability: Bar Chart (Goal: Compare). Chart.js.
+         - Application Funnel: Doughnut Chart (Goal: Organize). Chart.js.
+         - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. Relying on Unicode and Tailwind shapes.
+    -->
+
+    <style>
+        /* Chart Container Constraints to prevent overflow and ensure responsiveness */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 300px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        
+        /* Custom scrollbar for inner lists */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f5f5f4; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans antialiased p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header Section -->
+        <header class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-stone-900" id="studentName">Student Name</h1>
+                <p class="text-stone-500 text-sm mt-1">Section: <span id="studentSection" class="font-medium text-stone-700"></span> | CGPA: <span id="studentCGPA" class="font-medium text-stone-700"></span></p>
+            </div>
+            
+            <div class="flex gap-4 w-full md:w-auto">
+                <div class="bg-stone-100 rounded-xl p-4 flex-1 text-center">
+                    <div class="text-3xl font-bold text-stone-800" id="appsCount">0</div>
+                    <div class="text-xs text-stone-500 uppercase tracking-wider mt-1">Total Applications</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex-1 text-center relative group cursor-help">
+                    <div class="text-3xl font-bold text-emerald-700" id="reliabilityScore">0%</div>
+                    <div class="text-xs text-emerald-600 uppercase tracking-wider mt-1">Reliability Score</div>
+                    <!-- Tooltip -->
+                    <div class="absolute hidden group-hover:block w-48 bg-stone-800 text-white text-xs rounded p-2 top-full right-0 mt-2 z-10 text-left">
+                        Based on past interview attendance and offer acceptance history. High score prioritizes you for top tier companies.
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Column: Opportunities (7 cols) -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <section class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden flex flex-col h-[800px]">
+                    <div class="p-6 border-b border-stone-100">
+                        <h2 class="text-lg font-bold text-stone-900 mb-2">Drive Eligibility & Opportunities</h2>
+                        <p class="text-sm text-stone-500">Stop applying randomly. See exactly where you stand based on your profile and skills.</p>
+                        
+                        <!-- Tabs -->
+                        <div class="flex space-x-2 mt-4">
+                            <button id="tab-available" class="px-4 py-2 bg-stone-800 text-white rounded-lg text-sm font-medium transition-colors focus:outline-none">Available for You</button>
+                            <button id="tab-unavailable" class="px-4 py-2 bg-stone-100 text-stone-600 hover:bg-stone-200 rounded-lg text-sm font-medium transition-colors focus:outline-none">Unavailable / Blocked</button>
+                        </div>
+                    </div>
+
+                    <!-- Content Area -->
+                    <div id="opportunities-list" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-4 bg-stone-50/50">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Analytics & AI Insights (5 cols) -->
+            <div class="lg:col-span-5 space-y-6 flex flex-col h-[800px]">
+                
+                <!-- Employer AI Screening Results (The API Contract Implementation) -->
+                <section class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 flex-shrink-0">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-stone-900 flex items-center gap-2">
+                                <span class="text-xl">&#129302;</span> Autonomous Screenings
+                            </h2>
+                            <p class="text-xs text-stone-500 mt-1">Live results from Employer AI Agents</p>
+                        </div>
+                        <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded font-semibold animate-pulse">Live</span>
+                    </div>
+
+                    <div id="ai-insight-container" class="bg-stone-50 rounded-lg p-4 border border-stone-200 text-sm">
+                        <!-- Populated by JS based on API Contract -->
+                        <div class="text-center text-stone-500 py-4">Fetching agent data...</div>
+                    </div>
+                </section>
+
+                <!-- Data Visualizations -->
+                <section class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 flex-1 flex flex-col min-h-0">
+                    <h2 class="text-lg font-bold text-stone-900 mb-1">Your Analytics</h2>
+                    <p class="text-xs text-stone-500 mb-4">Tracking your progress and probabilities.</p>
+                    
+                    <div class="grid grid-rows-2 gap-4 flex-1 h-full min-h-0">
+                        <!-- Probability Chart -->
+                        <div class="bg-stone-50 rounded-xl p-4 border border-stone-100 flex flex-col h-full">
+                            <h3 class="text-sm font-semibold text-stone-700 mb-2 text-center">Selection Probability (Available Roles)</h3>
+                            <div class="chart-container flex-1">
+                                <canvas id="probabilityChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Application Funnel -->
+                        <div class="bg-stone-50 rounded-xl p-4 border border-stone-100 flex flex-col h-full">
+                            <h3 class="text-sm font-semibold text-stone-700 mb-2 text-center">Application Tracking Funnel</h3>
+                            <div class="chart-container flex-1">
+                                <canvas id="funnelChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        const studentData = {
+            name: "Umanshu Manan", // Matching the API contract data
+            section: "CSE-A",
+            cgpa: 8.4,
+            applications: 12,
+            reliabilityScore: 94 // High reliability
+        };
+
+        const companiesData = {
+            available: [
+                { name: "Intuit", role: "SDE - Backend", matchScore: 94, deadline: "2 Days Left", status: "Auto-Screened", description: "Your Python & FastAPI skills make you a top candidate." },
+                { name: "Google", role: "Frontend Engineer", matchScore: 78, deadline: "5 Days Left", status: "Open", description: "Good match based on your recent React projects." },
+                { name: "Microsoft", role: "Cloud Support", matchScore: 85, deadline: "Closes Tomorrow", status: "Open", description: "Strong Azure knowledge aligns well here." },
+                { name: "Accenture", role: "Associate Software Engineer", matchScore: 90, deadline: "Next Week", status: "Open", description: "High probability based on CGPA and general aptitude." }
+            ],
+            unavailable: [
+                { name: "Amazon", role: "Machine Learning Engineer", reason: "Requires CGPA > 9.0 and specific PyTorch portfolio.", type: "academic" },
+                { name: "Atlassian", role: "SDE 1", reason: "Missed the coding test deadline on Oct 12.", type: "deadline" },
+                { name: "Uber", role: "Backend Developer", reason: "Requires Go/Golang proficiency which is missing from your profile.", type: "skill" }
+            ]
+        };
+
+        // Simulated API Response representing the Contract
+        const apiContractResponse = {
+            "status": "success",
+            "data": {
+                "employer_request": {
+                    "company": "Intuit",
+                    "required_skills": ["Python", "FastAPI", "AI/ML"]
+                },
+                "agent_execution_log": [
+                    "Scanned 2,400 CSE students. Found 85 potential matches.",
+                    "Autonomously generated custom API debugging challenge.",
+                    "Emailed challenge to 85 students. Received 60 submissions.",
+                    "Evaluated code quality and execution speed."
+                ],
+                "final_shortlist": [
+                    {
+                        "student_name": "Umanshu Manan",
+                        "match_score": 94,
+                        "agent_verification": "Passed FastAPI debugging challenge in 4 mins. Code architecture was highly efficient.",
+                        "tpc_action": "Approved for final Intuit HR round."
+                    },
+                    {
+                        "student_name": "Aman S.",
+                        "match_score": 88,
+                        "agent_verification": "Passed basic Python logic, but AI/ML implementation lacked error handling.",
+                        "tpc_action": "Flagged for TPC upskilling intervention."
+                    }
+                ]
+            }
+        };
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            populateHeader();
+            renderOpportunities('available');
+            renderAILog();
+            initCharts();
+
+            // Tab Event Listeners
+            document.getElementById('tab-available').addEventListener('click', (e) => switchTab('available', e.target));
+            document.getElementById('tab-unavailable').addEventListener('click', (e) => switchTab('unavailable', e.target));
+        });
+
+        // --- UI UPDATES ---
+        function populateHeader() {
+            document.getElementById('studentName').textContent = studentData.name;
+            document.getElementById('studentSection').textContent = studentData.section;
+            document.getElementById('studentCGPA').textContent = studentData.cgpa;
+            document.getElementById('appsCount').textContent = studentData.applications;
+            document.getElementById('reliabilityScore').textContent = studentData.reliabilityScore + '%';
+            
+            // Color code reliability
+            const relEl = document.getElementById('reliabilityScore');
+            if(studentData.reliabilityScore > 90) relEl.className = "text-3xl font-bold text-emerald-600";
+            else if(studentData.reliabilityScore > 75) relEl.className = "text-3xl font-bold text-amber-500";
+            else relEl.className = "text-3xl font-bold text-rose-600";
+        }
+
+        function switchTab(type, clickedButton) {
+            // Update button styles
+            const btns = [document.getElementById('tab-available'), document.getElementById('tab-unavailable')];
+            btns.forEach(btn => {
+                btn.className = "px-4 py-2 bg-stone-100 text-stone-600 hover:bg-stone-200 rounded-lg text-sm font-medium transition-colors focus:outline-none";
+            });
+            clickedButton.className = "px-4 py-2 bg-stone-800 text-white rounded-lg text-sm font-medium transition-colors focus:outline-none";
+            
+            renderOpportunities(type);
+        }
+
+        function renderOpportunities(type) {
+            const container = document.getElementById('opportunities-list');
+            container.innerHTML = ''; // Clear
+
+            const data = companiesData[type];
+            
+            if(data.length === 0) {
+                container.innerHTML = `<div class="text-center text-stone-500 py-8">No companies in this category.</div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow";
+
+                if (type === 'available') {
+                    // Calculate color based on match score
+                    let scoreColor = "text-stone-600 bg-stone-100";
+                    if(item.matchScore >= 90) scoreColor = "text-emerald-700 bg-emerald-100";
+                    else if(item.matchScore >= 75) scoreColor = "text-emerald-600 bg-emerald-50";
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-lg font-bold text-stone-900">${item.name}</h3>
+                                <p class="text-sm font-medium text-stone-700">${item.role}</p>
+                                <p class="text-xs text-stone-500 mt-2">${item.description}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-block px-2 py-1 rounded text-xs font-bold ${scoreColor} mb-2 border border-stone-100">
+                                    ${item.matchScore}% Selection Prob.
+                                </span>
+                                <div class="text-xs text-amber-600 font-medium">&#8987; ${item.deadline}</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-stone-100 flex justify-between items-center">
+                            <span class="text-xs font-medium text-stone-500">Status: ${item.status}</span>
+                            <button class="bg-stone-900 hover:bg-stone-800 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">Apply Now</button>
+                        </div>
+                    `;
+                } else {
+                    // Unavailable Card Logic
+                    let icon = '&#10060;'; // Cross
+                    let typeClass = "bg-rose-50 text-rose-700 border-rose-100";
+                    if(item.type === 'deadline') { icon = '&#9200;'; typeClass = "bg-amber-50 text-amber-700 border-amber-100"; }
+                    if(item.type === 'academic') { icon = '&#128218;'; }
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start opacity-75">
+                            <div>
+                                <h3 class="text-lg font-bold text-stone-500">${item.name}</h3>
+                                <p class="text-sm font-medium text-stone-500">${item.role}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${typeClass} border">
+                                    <span>${icon}</span> Blocked
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mt-3 bg-stone-50 p-3 rounded border border-stone-100">
+                            <p class="text-xs text-stone-600"><span class="font-bold">Reason:</span> ${item.reason}</p>
+                        </div>
+                    `;
+                }
+                container.appendChild(card);
+            });
+        }
+
+        function renderAILog() {
+            const container = document.getElementById('ai-insight-container');
+            const data = apiContractResponse.data;
+            
+            // Find current student in shortlist
+            const myResult = data.final_shortlist.find(s => s.student_name === studentData.name);
+
+            let html = `
+                <div class="mb-3 border-b border-stone-200 pb-3">
+                    <span class="font-bold text-stone-800">Company:</span> ${data.employer_request.company} <br>
+                    <span class="font-bold text-stone-800">Searching for:</span> <span class="text-xs bg-stone-200 px-1 rounded">${data.employer_request.required_skills.join(', ')}</span>
+                </div>
+                <div class="space-y-1 mb-4 text-xs font-mono text-stone-500">
+                    <div class="font-semibold text-stone-700 font-sans mb-1">Agent Execution Log:</div>
+            `;
+            
+            data.agent_execution_log.forEach(log => {
+                html += `<div>> ${log}</div>`;
+            });
+            html += `</div>`;
+
+            if(myResult) {
+                html += `
+                    <div class="bg-emerald-50 border border-emerald-200 rounded p-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-emerald-800">Your Result</span>
+                            <span class="bg-emerald-200 text-emerald-900 text-xs px-2 py-0.5 rounded font-bold">Match: ${myResult.match_score}</span>
+                        </div>
+                        <p class="text-xs text-emerald-700 italic">"${myResult.agent_verification}"</p>
+                        <div class="mt-2 text-xs font-bold text-stone-800 border-t border-emerald-100 pt-2">
+                            TPC Action: <span class="text-emerald-600">${myResult.tpc_action}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // --- CHARTS ---
+        function initCharts() {
+            // Chart 1: Selection Probability (Bar)
+            const probCtx = document.getElementById('probabilityChart').getContext('2d');
+            const availCompanies = companiesData.available.map(c => c.name);
+            const probScores = companiesData.available.map(c => c.matchScore);
+
+            new Chart(probCtx, {
+                type: 'bar',
+                data: {
+                    labels: availCompanies,
+                    datasets: [{
+                        label: 'Selection Probability (%)',
+                        data: probScores,
+                        backgroundColor: '#10b981', // emerald-500
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) { return context.parsed.y + '% Probability'; }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { stepSize: 20, font: {size: 10} }, grid: {color: '#f5f5f4'} },
+                        x: { grid: {display: false}, ticks: { font: {size: 10} } }
+                    }
+                }
+            });
+
+            // Chart 2: Application Funnel (Doughnut)
+            const funnelCtx = document.getElementById('funnelChart').getContext('2d');
+            new Chart(funnelCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Applied (Waiting)', 'Screening Passed', 'Interview Scheduled', 'Rejected'],
+                    datasets: [{
+                        data: [5, 3, 2, 2], // Mock tracking data summing to 12
+                        backgroundColor: [
+                            '#e7e5e4', // stone-200
+                            '#60a5fa', // blue-400
+                            '#10b981', // emerald-500
+                            '#f43f5e'  // rose-500
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 10, font: {size: 10} } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
